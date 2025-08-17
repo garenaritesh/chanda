@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Room/Flat Payments</title>
+    <!-- SheetJS for Excel read/write -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: #0b1020;
+            --card: #131a2a;
+            --muted: #96a0b5;
+            --text: #e9edf5;
+            --accent: #6ea8fe;
+            --ok: #67d391;
+            --warn: #ffb454;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        header {
+            padding: 20px;
+            border-bottom: 1px solid #1d263b;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            font-size: 18px;
+            margin: 0;
+            letter-spacing: .3px;
+        }
+
+        header nav {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            border: 1px solid #24304e;
+            background: #19223a;
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            border-color: #314065;
+        }
+
+        .btn.primary {
+            background: linear-gradient(180deg, #2a5fff, #1e4fcc);
+            border-color: #2854ce;
+        }
+
+        .btn.ok {
+            background: #0e3a23;
+            border-color: #1f6842;
+            color: #b6f2cd;
+        }
+
+        .btn.warn {
+            background: #3a2a0e;
+            border-color: #6b4c1c;
+            color: #ffe3b3;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid #1d263b;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        label {
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            background: #0f1524;
+            border: 1px solid #1f2945;
+            border-radius: 12px;
+            color: var(--text);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #3353a8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        thead th {
+            text-align: left;
+            font-size: 12px;
+            color: var(--muted);
+            background: #11182a;
+            padding: 12px;
+            border-bottom: 1px solid #1d263b;
+        }
+
+        tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #1d263b;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .spacer {
+            height: 8px;
+        }
+
+        .footer-note {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #0f1524;
+            border: 1px solid #202a48;
+            color: var(--muted);
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Room/Flat Payments</h1>
+        <nav>
+            <button class="btn" id="navForm">➕ Add Entry</button>
+            <button class="btn" id="navView">📄 See Data</button>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- FORM VIEW -->
+        <section id="view-form" class="card">
+            <h2 style="margin:4px 0 14px;">Add Payment</h2>
+            <div class="grid">
+                <div>
+                    <label for="amount">Amount</label>
+                    <input type="number" id="amount" placeholder="e.g., 1500" min="0" step="1" required />
+                </div>
+                <div>
+                    <label for="room">Room / Flat No</label>
+                    <input type="text" id="room" placeholder="e.g., A-203" required />
+                </div>
+            </div>
+            <div class="spacer"></div>
+            <div class="row">
+                <button class="btn primary" id="saveBtn">Submit</button>
+                <span class="muted">Entries are saved in your browser. You can export to Excel anytime.</span>
+            </div>
+
+            <div class="spacer"></div>
+            <div class="spacer"></div>
+
+            <div class="card" style="background:#0f1524; border-color:#202a48;">
+                <div class="row" style="justify-content:space-between;">
+                    <div class="row" style="gap:8px;">
+                        <span class="pill">Excel Tools</span>
+                        <button class="btn ok" id="downloadExcel">⬇️ Download Excel</button>
+                        <label class="btn" for="uploadExcel" style="cursor:pointer;">⬆️ Upload Excel</label>
+                        <input id="uploadExcel" type="file" accept=".xlsx,.xls" class="hidden" />
+                        <button class="btn warn" id="clearData">🧹 Clear Saved Data</button>
+                    </div>
+                    <span class="muted">Template headers: <strong>Amount</strong>, <strong>Room No</strong></span>
+                </div>
+                <p class="footer-note">
+                    Uploading an Excel file will load and display its data here (it won’t auto-save unless you click
+                    “Import to Browser”).
+                </p>
+                <div id="uploadPreview" class="hidden">
+                    <h3 style="margin: 12px 0 8px;">Uploaded Excel Preview</h3>
+                    <div class="row">
+                        <button class="btn ok" id="importUploaded">Import to Browser</button>
+                        <button class="btn" id="discardUploaded">Discard</button>
+                    </div>
+                    <div id="uploadTableWrap"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- DATA VIEW -->
+        <section id="view-data" class="card hidden">
+            <h2 style="margin:4px 0 14px;">Stored Data</h2>
+            <div class="row">
+                <span class="pill" id="countPill">0 records</span>
+                <button class="btn" id="backToForm">← Back</button>
+                <button class="btn ok" id="downloadExcel2">⬇️ Download Excel</button>
+            </div>
+            <div id="tableWrap" style="margin-top:12px;"></div>
+        </section>
+    </div>
+
+    <script>
+        // ---------- Storage Keys ----------
+        const LS_KEY = 'payments_v1';
+
+        // ---------- DOM ----------
+        const navForm = document.getElementById('navForm');
+        const navView = document.getElementById('navView');
+        const viewForm = document.getElementById('view-form');
+        const viewData = document.getElementById('view-data');
+        const amountEl = document.getElementById('amount');
+        const roomEl = document.getElementById('room');
+        const saveBtn = document.getElementById('saveBtn');
+        const tableWrap = document.getElementById('tableWrap');
+        const countPill = document.getElementById('countPill');
+        const backToForm = document.getElementById('backToForm');
+
+        const downloadExcel = document.getElementById('downloadExcel');
+        const downloadExcel2 = document.getElementById('downloadExcel2');
+        const uploadExcel = document.getElementById('uploadExcel');
+        const uploadPreview = document.getElementById('uploadPreview');
+        const uploadTableWrap = document.getElementById('uploadTableWrap');
+        const importUploaded = document.getElementById('importUploaded');
+        const discardUploaded = document.getElementById('discardUploaded');
+        const clearData = document.getElementById('clearData');
+
+        let uploadedData = null; // holds rows from uploaded Excel
+
+        // ---------- Helpers ----------
+        function getData() {
+            try {
+                const raw = localStorage.getItem(LS_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch { return []; }
+        }
+        function setData(rows) {
+            localStorage.setItem(LS_KEY, JSON.stringify(rows));
+        }
+
+        function addRow(amount, room) {
+            const rows = getData();
+            rows.push({ amount: String(amount).trim(), room: String(room).trim() });
+            setData(rows);
+        }
+
+        function renderTable(rows, target) {
+            if (!rows.length) {
+                target.innerHTML = `<p class="muted">No records yet.</p>`;
+                return;
+            }
+            const header = `<thead><tr><th>#</th><th>Amount</th><th>Room No</th></tr></thead>`;
+            const body = rows.map((r, i) => (
+                `<tr><td>${i + 1}</td><td>${escapeHtml(r.amount ?? '')}</td><td>${escapeHtml(r.room ?? '')}</td></tr>`
+            )).join('');
+            target.innerHTML = `<table>${header}<tbody>${body}</tbody></table>`;
+        }
+
+        function escapeHtml(s) { return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+
+        function switchView(which) {
+            if (which === 'form') { viewForm.classList.remove('hidden'); viewData.classList.add('hidden'); }
+            else { viewForm.classList.add('hidden'); viewData.classList.remove('hidden'); }
+        }
+
+        function updateDataView() {
+            const rows = getData();
+            renderTable(rows, tableWrap);
+            countPill.textContent = `${rows.length} record${rows.length === 1 ? '' : 's'}`;
+        }
+
+        // ---------- Excel Export ----------
+        function downloadAsExcel(rows) {
+            const aoa = [['Amount', 'Room No'], ...rows.map(r => [r.amount, r.room])];
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Payments');
+            XLSX.writeFile(wb, 'payments.xlsx'); // triggers download
+        }
+
+        // ---------- Excel Import (Upload) ----------
+        uploadExcel.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const data = await file.arrayBuffer();
+            const wb = XLSX.read(data, { type: 'array' });
+            const firstSheet = wb.SheetNames[0];
+            const sheet = wb.Sheets[firstSheet];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // AOA
+            // Expect header row: Amount, Room No
+            const rows = [];
+            for (let i = 1; i < json.length; i++) {
+                const row = json[i] || [];
+                if ((row[0] !== undefined && row[0] !== null && row[0] !== '') ||
+                    (row[1] !== undefined && row[1] !== null && row[1] !== '')) {
+                    rows.push({ amount: row[0] ?? '', room: row[1] ?? '' });
+                }
+            }
+            uploadedData = rows;
+            // Show preview
+            uploadPreview.classList.remove('hidden');
+            renderTable(rows, uploadTableWrap);
+            // reset input so same file can be re-selected later
+            e.target.value = '';
+        });
+
+        importUploaded.addEventListener('click', () => {
+            if (!uploadedData) return;
+            // Merge with existing
+            const current = getData();
+            setData([...current, ...uploadedData]);
+            uploadedData = null;
+            uploadPreview.classList.add('hidden');
+            uploadTableWrap.innerHTML = '';
+            updateDataView();
+            alert('Imported to browser storage.');
+        });
+
+        discardUploaded.addEventListener('click', () => {
+            uploadedData = null;
+            uploadPreview.classList.add('hidden');
+            uploadTableWrap.innerHTML = '';
+        });
+
+        // ---------- Events ----------
+        saveBtn.addEventListener('click', () => {
+            const amount = amountEl.value.trim();
+            const room = roomEl.value.trim();
+            if (!amount || !room) {
+                alert('Please enter both Amount and Room/Flat No.');
+                return;
+            }
+            addRow(amount, room);
+            amountEl.value = '';
+            roomEl.value = '';
+            updateDataView();
+            alert('Saved!');
+        });
+
+        clearData.addEventListener('click', () => {
+            if (confirm('This will delete all saved entries in this browser. Continue?')) {
+                setData([]);
+                updateDataView();
+                alert('Cleared.');
+            }
+        });
+
+        navForm.addEventListener('click', () => switchView('form'));
+        navView.addEventListener('click', () => {
+            updateDataView();
+            switchView('data');
+        });
+        backToForm.addEventListener('click', () => switchView('form'));
+
+        downloadExcel.addEventListener('click', () => downloadAsExcel(getData()));
+        downloadExcel2.addEventListener('click', () => downloadAsExcel(getData()));
+
+        // ---------- Init ----------
+        updateDataView();
+    </script>
+</body>
+
+</html>
